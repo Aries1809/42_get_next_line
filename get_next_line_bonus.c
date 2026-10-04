@@ -98,7 +98,7 @@ buffer	*find_node(int fd, buffer *buf)
 	}
 	if (!current->b_buf)
 	{
-		current->b_cap = 256;
+		current->b_cap = BUFFER_SIZE;
 		current->b_len = 0;
 		current->b_buf = malloc(current->b_cap);
 		if (!current->b_buf)

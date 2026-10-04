@@ -65,7 +65,7 @@ char	*get_next_line(int fd)
 
 	if (!buf.b_buf)
 	{
-		buf.b_cap = 256;
+		buf.b_cap = BUFFER_SIZE;
 		buf.b_len = 0;
 		buf.b_buf = malloc(buf.b_cap);
 		if (!buf.b_buf)
