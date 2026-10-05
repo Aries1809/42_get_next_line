@@ -65,7 +65,7 @@ buffer	*create_node(int fd)
 	new_node = malloc(sizeof(buffer));
 	if (!new_node)
 		return (NULL);
-	new_node->b_cap = 256;
+	new_node->b_cap = BUFFER_SIZE;
 	new_node->b_len = 0;
 	new_node->b_id = fd;
 	new_node->next = NULL;
