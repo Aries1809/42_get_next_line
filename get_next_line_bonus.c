@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
-/*                                                       :::      ::::::::    */
-/*   get_next_line_bonus.c                             :+:      :+:    :+:    */
-/*                                                   +:+ +:+         +:+      */
-/*   By: kseltenr <kseltenr@student.42.fr>         #+#  +:+       +#+         */
-/*                                               +#+#+#+#+#+   +#+            */
-/*   Created: 2026/09/11 03:06:54 by kseltenr         #+#    #+#              */
-/*   Updated: 2026/09/17 22:39:52 by kseltenr        ###   ########.fr        */
+/*                                                        :::      ::::::::   */
+/*   get_next_line_bonus.c                              :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: kseltenr <kseltenr@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/09/11 03:06:54 by kseltenr          #+#    #+#             */
+/*   Updated: 2026/10/21 05:08:00 by kseltenr        ###   ########.fr        */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,119 +14,84 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int	find_line(buffer buf)
+static t_gnl	*gnl_get_node(t_gnl **head, int fd)
 {
-	int	i;
+	t_gnl	*node;
 
-	if (!buf.b_buf)
-		return (1);
-	i = 0;
-	while (buf.b_buf[i])
+	node = *head;
+	while (node && node->fd != fd)
+		node = node->next;
+	if (node)
+		return (node);
+	node = malloc(sizeof(t_gnl));
+	if (!node)
+		return (NULL);
+	node->buf = NULL;
+	node->start = 0;
+	node->end = 0;
+	node->scan = 0;
+	node->cap = 0;
+	node->fd = fd;
+	node->next = *head;
+	*head = node;
+	return (node);
+}
+
+static char	*gnl_free_node(t_gnl **head, t_gnl *node, char *ret)
+{
+	t_gnl	**link;
+
+	link = head;
+	while (*link != node)
+		link = &(*link)->next;
+	*link = node->next;
+	free(node->buf);
+	free(node);
+	return (ret);
+}
+
+static ssize_t	gnl_fill(t_gnl *node, size_t *stop)
+{
+	ssize_t	bytes;
+
+	*stop = gnl_find_nl(node);
+	while (!*stop)
 	{
-		if (buf.b_buf[i] == '\n')
-			return (0);
-		i++;
+		if (!gnl_reserve(node))
+			return (-1);
+		bytes = read(node->fd, node->buf + node->end, BUFFER_SIZE);
+		if (bytes <= 0)
+			return (bytes);
+		node->end += bytes;
+		*stop = gnl_find_nl(node);
 	}
 	return (1);
 }
 
-void	read_to_buf(int fd, buffer *buf)
-{
-	char	*temp;
-	int		i;
-
-	i = 0;
-	temp = malloc(sizeof(char) * (BUFFER_SIZE + 1));
-	if (!temp)
-		return ;
-	while (find_line(*buf))
-	{
-		i = read(fd, temp, BUFFER_SIZE);
-		if (i == -1)
-		{
-			free(temp);
-			free(buf->b_buf);
-			buf->b_buf = NULL;
-			return ;
-		}
-		else if (i == 0)
-			break ;
-		temp[i] = '\0';
-		buf->b_buf = ft_strjoin(&*buf, temp, i);
-	}
-	free(temp);
-	return ;
-}
-
-buffer	*create_node(int fd)
-{
-	buffer	*new_node;
-
-	new_node = malloc(sizeof(buffer));
-	if (!new_node)
-		return (NULL);
-	new_node->b_cap = BUFFER_SIZE;
-	new_node->b_len = 0;
-	new_node->b_id = fd;
-	new_node->next = NULL;
-	new_node->b_buf = malloc(new_node->b_cap);
-	if (!new_node->b_buf)
-	{
-		free(new_node);
-		return (NULL);
-	}
-	new_node->b_buf[0] = '\0';
-	return (new_node);
-}
-
-buffer	*find_node(int fd, buffer *buf)
-{
-	buffer	*current;
-
-	current = buf;
-	while (current->b_id != fd)
-	{
-		if (current->next == NULL)
-		{
-			current->next = create_node(fd);
-			if (!current->next)
-				return (NULL);
-			current = current->next;
-			break ;
-		}
-		current = current->next;
-	}
-	if (!current->b_buf)
-	{
-		current->b_cap = BUFFER_SIZE;
-		current->b_len = 0;
-		current->b_buf = malloc(current->b_cap);
-		if (!current->b_buf)
-			return (NULL);
-		current->b_buf[0] = '\0';
-	}
-	return (current);
-}
-
 char	*get_next_line(int fd)
 {
-	static buffer		buf;
-	buffer				*current;
-	char				*ret;
+	static t_gnl	*head;
+	t_gnl			*node;
+	size_t			stop;
+	ssize_t			status;
+	char			*line;
 
-	current = find_node(fd, &buf);
-	if (!current->b_buf)
+	if (fd < 0 || BUFFER_SIZE <= 0)
 		return (NULL);
-	read_to_buf(fd, current);
-	if (!current->b_buf)
+	node = gnl_get_node(&head, fd);
+	if (!node)
 		return (NULL);
-	if (current->b_buf[0] == '\0')
+	status = gnl_fill(node, &stop);
+	if (status < 0)
+		return (gnl_free_node(&head, node, NULL));
+	if (status == 0)
 	{
-		free(current->b_buf);
-		current->b_buf = NULL;
-		return (NULL);
+		if (node->start == node->end)
+			return (gnl_free_node(&head, node, NULL));
+		stop = node->end;
 	}
-	ret = return_line(*current);
-	current->b_buf = delete_line(current, ft_strlen(ret));
-	return (ret);
+	line = gnl_extract(node, stop);
+	if (!line || status == 0)
+		return (gnl_free_node(&head, node, line));
+	return (line);
 }

@@ -1,120 +1,93 @@
 /* ************************************************************************** */
 /*                                                                            */
-/*                                                       :::      ::::::::    */
-/*   get_next_line_utils_bonus.c                       :+:      :+:    :+:    */
-/*                                                   +:+ +:+         +:+      */
-/*   By: kseltenr <kseltenr@student.42.fr>         #+#  +:+       +#+         */
-/*                                               +#+#+#+#+#+   +#+            */
-/*   Created: 2026/09/11 03:05:52 by kseltenr         #+#    #+#              */
-/*   Updated: 2026/09/11 03:09:07 by kseltenr        ###   ########.fr        */
+/*                                                        :::      ::::::::   */
+/*   get_next_line_utils_bonus.c                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: kseltenr <kseltenr@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/09/11 03:05:52 by kseltenr          #+#    #+#             */
+/*   Updated: 2026/10/21 05:13:30 by kseltenr        ###   ########.fr        */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line_bonus.h"
 #include <stdlib.h>
 
-int	ft_strlen(char *s)
+static int	gnl_compact(t_gnl *node)
 {
-	int	len;
+	size_t	i;
 
-	len = 0;
-	while (s[len])
-		len++;
-	return (len);
-}
-
-char	*ft_allocjoin(buffer *buf, char *str, int total)
-{
-	int		i;
-	int		n;
-	char	*ret;
-
-	ret = malloc(sizeof(char) * (total + buf->b_cap + 1));
-	if (!ret)
-	{
-		free(buf->b_buf);
-		return (NULL);
-	}
-	n = -1;
-	i = -1;
-	while (++i < buf->b_len)
-		ret[i] = buf->b_buf[i];
-	while (str[++n])
-		ret[i++] = str[n];
-	ret[i] = '\0';
-	buf->b_len = total;
-	buf->b_cap += total;
-	free(buf->b_buf);
-	return (ret);
-
-}
-
-char	*ft_strjoin(buffer *buf, char *str, int len)
-{
-	int		i;
-	int		total;
-
-	i = -1;
-	total = buf->b_len + len;
-	if (total < buf->b_cap)
-	{
-		while (str[++i])
-			buf->b_buf[buf->b_len++] = str[i];
-		buf->b_buf[buf->b_len] = '\0';
-		return (buf->b_buf);
-	}
-	return (ft_allocjoin(&*buf, str, total));
-}
-
-char	*delete_line(buffer *buf, int len)
-{
-	int		i;
-	char	*ret;
-
-	if (!buf->b_buf)
-		return (NULL);
-	if (len >= buf->b_len)
-	{
-		free(buf->b_buf);
-		return (NULL);
-	}
-	buf->b_len -= len;
-	buf->b_cap -= len;
-	ret = malloc(sizeof(char) * (buf->b_len + buf->b_cap + 1));
-	if (!ret)
-	{
-		free(buf->b_buf);
-		buf->b_len = 0;
-		return (NULL);
-	}
+	if (node->end + BUFFER_SIZE <= node->cap)
+		return (1);
+	if (node->start == 0)
+		return (0);
 	i = 0;
-	while (buf->b_buf[len])
-		ret[i++] = buf->b_buf[len++];
-	ret[i] = '\0';
-	free(buf->b_buf);
-	return (ret);
+	while (node->start + i < node->end)
+	{
+		node->buf[i] = node->buf[node->start + i];
+		i++;
+	}
+	node->end -= node->start;
+	node->scan -= node->start;
+	node->start = 0;
+	return (node->end + BUFFER_SIZE <= node->cap);
 }
 
-char	*return_line(buffer buf)
+int	gnl_reserve(t_gnl *node)
 {
-	int		i;
-	int		n;
-	char	*ret;
+	char	*new;
+	size_t	cap;
+	size_t	i;
 
+	if (gnl_compact(node))
+		return (1);
+	cap = node->cap * 2;
+	if (cap < node->end + BUFFER_SIZE)
+		cap = node->end + BUFFER_SIZE;
+	new = malloc(cap);
+	if (!new)
+		return (0);
 	i = 0;
-	n = 0;
-	while (buf.b_buf[i] != '\n' && buf.b_buf[i])
-		i++;
-	if (buf.b_buf[i] == '\n')
-		i++;
-	ret = malloc(sizeof(char) * (i + 1));
-	if (!ret)
-		return (NULL);
-	while (n != i)
+	while (i < node->end)
 	{
-		ret[n] = buf.b_buf[n];
-		n++;
+		new[i] = node->buf[i];
+		i++;
 	}
-	ret[n] = '\0';
-	return (ret);
+	free(node->buf);
+	node->buf = new;
+	node->cap = cap;
+	return (1);
+}
+
+size_t	gnl_find_nl(t_gnl *node)
+{
+	if (node->scan < node->start)
+		node->scan = node->start;
+	while (node->scan < node->end)
+	{
+		if (node->buf[node->scan++] == '\n')
+			return (node->scan);
+	}
+	return (0);
+}
+
+char	*gnl_extract(t_gnl *node, size_t stop)
+{
+	char	*line;
+	size_t	i;
+
+	line = malloc(stop - node->start + 1);
+	if (!line)
+		return (NULL);
+	i = 0;
+	while (node->start < stop)
+		line[i++] = node->buf[node->start++];
+	line[i] = '\0';
+	if (node->start == node->end)
+	{
+		node->start = 0;
+		node->end = 0;
+		node->scan = 0;
+	}
+	return (line);
 }
