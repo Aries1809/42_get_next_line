@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int	find_line(buffer buf)
+int	find_line(t_buffer buf)
 {
 	int	i;
 
@@ -30,7 +30,7 @@ int	find_line(buffer buf)
 	return (1);
 }
 
-void	read_to_buf(int fd, buffer *buf)
+void	read_to_buf(int fd, t_buffer *buf)
 {
 	char	*temp;
 	int		i;
@@ -60,7 +60,7 @@ void	read_to_buf(int fd, buffer *buf)
 
 char	*get_next_line(int fd)
 {
-	static buffer		buf;
+	static t_buffer		buf;
 	char				*ret;
 
 	if (!buf.b_buf)

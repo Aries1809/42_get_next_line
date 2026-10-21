@@ -23,7 +23,7 @@ int	ft_strlen(char *s)
 	return (len);
 }
 
-char	*ft_allocjoin(buffer *buf, char *str, int total)
+char	*ft_allocjoin(t_buffer *buf, char *str, int total)
 {
 	int		i;
 	int		n;
@@ -46,10 +46,9 @@ char	*ft_allocjoin(buffer *buf, char *str, int total)
 	buf->b_cap += total;
 	free(buf->b_buf);
 	return (ret);
-
 }
 
-char	*ft_strjoin(buffer *buf, char *str, int len)
+char	*ft_strjoin(t_buffer *buf, char *str, int len)
 {
 	int		i;
 	int		total;
@@ -66,7 +65,7 @@ char	*ft_strjoin(buffer *buf, char *str, int len)
 	return (ft_allocjoin(&*buf, str, total));
 }
 
-char	*delete_line(buffer *buf, int len)
+char	*delete_line(t_buffer *buf, int len)
 {
 	int		i;
 	char	*ret;
@@ -95,7 +94,7 @@ char	*delete_line(buffer *buf, int len)
 	return (ret);
 }
 
-char	*return_line(buffer buf)
+char	*return_line(t_buffer buf)
 {
 	int		i;
 	int		n;
